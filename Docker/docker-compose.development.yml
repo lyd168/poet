@@ -75,6 +75,9 @@ services:
     networks:
       - db
       - http
+      - outside
+    ports:
+      - "4000:4000"
   torrent-system:
     build:
       context: ..

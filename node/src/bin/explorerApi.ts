@@ -6,10 +6,10 @@ import { BlockchainRouter } from '../blockchain/httpApi/router'
 const Body = require('koa-body')
 
 export interface ExplorerOptions {
-  port: number
+  readonly port: number
 }
 
-export default async function createServer(options?: ExplorerOptions) {
+async function createServer(options?: ExplorerOptions) {
   const koa = new Koa()
   const service = new BlockchainService()
   const routeStrategy = new BlockchainRouter(service)
@@ -31,18 +31,17 @@ export default async function createServer(options?: ExplorerOptions) {
   return koa
 }
 
-export async function start(options?: ExplorerOptions) {
-  options = Object.assign({}, {
+async function start(options?: ExplorerOptions) {
+  const optionsWithDefaults = {
     port: 4000,
-  }, options || {})
-  const server = await createServer(options)
-  await server.listen(options.port, '0.0.0.0')
+    ...(options || {})
+  }
+  const server = await createServer(optionsWithDefaults)
+  await server.listen(optionsWithDefaults.port, '0.0.0.0')
 
   console.log('Server started successfully.')
 }
 
-if (!module.parent) {
-  start().catch(error => {
-    console.log('Unable to start Trusted Publisher server:', error, error.stack)
-  })
-}
+start().catch(error => {
+  console.log('Unable to start Explorer API.', error, error.stack)
+})

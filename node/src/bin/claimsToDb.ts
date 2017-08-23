@@ -10,7 +10,7 @@ async function startListening() {
   const queue = new Queue()
 
   try {
-    await blockchain.start(() => getConnection('claimsToDb'))
+    await blockchain.start(() => getConnection({autoSchemaSync: true}))
 
     console.log('Retrieving last block processed...')
     const latest = await blockchain.getLastProcessedBlock()

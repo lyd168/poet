@@ -9,7 +9,7 @@ async function startListening() {
   const blockchain = new BlockchainService()
   const queue = new Queue()
 
-  await blockchain.start(() => getConnection('retryTxs'))
+  await blockchain.start(() => getConnection())
 
   const setupWorker = (name: string, action: any) => {
     process.nextTick(() => {

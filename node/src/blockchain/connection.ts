@@ -1,20 +1,48 @@
 import * as path from 'path'
-import { createConnection } from 'typeorm'
+import { createConnection, DriverOptions } from 'typeorm'
 import { delay } from 'poet-js'
 
-export async function getConnection(purpose: string) {
-  let attempts = 30
+interface ConnectionParameters {
+  readonly maxRetry: number
+  readonly retryDelay: number
+  readonly autoSchemaSync: boolean
+  readonly driver: DriverOptions
+}
+
+const defaultConnectionParameters: ConnectionParameters = {
+  maxRetry: 30,
+  retryDelay: 3000,
+  autoSchemaSync: false,
+  driver: {
+    type: 'postgres',
+    host: '',
+    port: 5432,
+    username: 'poet',
+    password: '',
+    database: 'poet'
+  }
+}
+
+export async function getConnection(connectionParameters?: Partial<ConnectionParameters>) {
+  const mergedConfiguration = {
+    ...defaultConnectionParameters,
+    ...(connectionParameters || {}),
+    driver: {
+      ...defaultConnectionParameters.driver,
+      ...(connectionParameters && connectionParameters.driver || {})
+    }
+  }
+
+  console.log('Connecting to DB with configuration:', JSON.stringify(mergedConfiguration, null, 2))
+
+  let attempts = mergedConfiguration.maxRetry
   let lastError
   while (attempts--) {
+    console.log(`Attempting connection to db, attempt # ${attempts}`)
     try {
       return await createConnection({
         driver: {
-          type: 'postgres',
-          host: 'db',
-          port: 5432,
-          username: 'poet',
-          password: 'poet',
-          database: 'poet'
+          ...mergedConfiguration.driver,
         },
         entities: [
           path.join(__dirname, 'orm', '*.ts'),
@@ -22,11 +50,12 @@ export async function getConnection(purpose: string) {
           path.join(__dirname, 'orm', 'bitcoin', '*.ts'),
           path.join(__dirname, 'orm', 'events', '*.ts')
         ],
-        autoSchemaSync: purpose === 'claimsToDb' // TODO: Remove this
+        autoSchemaSync: mergedConfiguration.autoSchemaSync
       })
     } catch (error) {
       lastError = error
-      await delay(3000)
+      console.log('Unable to connect on attempt #', attempts, error, error.stack)
+      await delay(connectionParameters.retryDelay)
     }
   }
   console.log('Never connected!', lastError, lastError.stack)

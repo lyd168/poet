@@ -21,7 +21,7 @@ export class BlockchainRouter {
   }
 
   async addRoutes(router: Router) {
-    await this.service.start(() => getConnection('explorer'))
+    await this.service.start(() => getConnection({autoSchemaSync: true}))
 
     function route<T>(repository: Repository<T>, resourcePath: string) {
       const route = new Route<T>(repository, resourcePath)
