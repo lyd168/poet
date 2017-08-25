@@ -24,7 +24,7 @@
     "bitcoin",
     "torrent"
   ],
-  "author": "BTC Media Inc.",
+  "author": "Po.et",
   "license": "MIT",
   "dependencies": {
     "@types/amqplib": "^0.5.0",
@@ -32,6 +32,7 @@
     "@types/ioredis": "0.0.21",
     "@types/isomorphic-fetch": "0.0.34",
     "@types/koa": "^2.0.37",
+    "@types/koa-route": "^3.2.0",
     "@types/koa-router": "^7.0.21",
     "@types/lodash": "^4.14.50",
     "@types/rx": "^4.1.1",
