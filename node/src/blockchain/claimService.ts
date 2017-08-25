@@ -42,7 +42,7 @@ export class ClaimService {
 
     const id = await getHash(ClaimBuilder.serializeBlockForSave(block), block.id)
 
-    const preliminarInfo = {
+    const preliminaryInfo = {
       hash: block.id,
       torrentHash: id
     }
@@ -55,7 +55,7 @@ export class ClaimService {
 
       if (unknownContents) {
 
-        await this.updateBlockInfo(blockInfo, preliminarInfo)
+        await this.updateBlockInfo(blockInfo, preliminaryInfo)
 
         return await this.updateClaimInfoForBlock(blockInfo, block)
 
@@ -64,10 +64,10 @@ export class ClaimService {
     } else {
 
       // This will just update the SHA256 hash on the db entry
-      const blockData = await this.createOrUpdateBlockInfo(preliminarInfo)
+      const blockData = await this.createOrUpdateBlockInfo(preliminaryInfo)
 
       // Remember to store info for claims
-      await this.updateClaimInfoForBlock(preliminarInfo, block)
+      await this.updateClaimInfoForBlock(preliminaryInfo, block)
 
       return blockData
 
