@@ -1,15 +1,15 @@
 import * as path from 'path'
-import { createConnection, DriverOptions } from 'typeorm'
+import { ConnectionOptions, createConnection, DriverOptions } from 'typeorm'
 import { delay } from 'poet-js'
 
-interface ConnectionParameters {
+export interface ConnectionConfiguration {
   readonly maxRetry: number
   readonly retryDelay: number
   readonly autoSchemaSync: boolean
   readonly driver: DriverOptions
 }
 
-const defaultConnectionParameters: ConnectionParameters = {
+const defaultConfiguration: ConnectionConfiguration = {
   maxRetry: 30,
   retryDelay: 3000,
   autoSchemaSync: false,
@@ -23,42 +23,54 @@ const defaultConnectionParameters: ConnectionParameters = {
   }
 }
 
-export async function getConnection(connectionParameters?: Partial<ConnectionParameters>) {
-  const mergedConfiguration = {
-    ...defaultConnectionParameters,
-    ...(connectionParameters || {}),
-    driver: {
-      ...defaultConnectionParameters.driver,
-      ...(connectionParameters && connectionParameters.driver || {})
-    }
-  }
+const entities = [
+  path.join(__dirname, 'orm', '*.ts'),
+  path.join(__dirname, 'orm', 'domain', '*.ts'),
+  path.join(__dirname, 'orm', 'bitcoin', '*.ts'),
+  path.join(__dirname, 'orm', 'events', '*.ts')
+]
 
-  console.log('Connecting to DB with configuration:', JSON.stringify(mergedConfiguration, null, 2))
+export async function getConnection(configuration?: Partial<ConnectionConfiguration>) {
+  const configurationWithDefaults = withDefaults(configuration)
+  const connectionOptions = getConnectionOptions(configurationWithDefaults)
 
-  let attempts = mergedConfiguration.maxRetry
-  let lastError
+  console.log('DB Connection Configuration:', JSON.stringify(configurationWithDefaults, null, 2))
+
+  let attempts = configurationWithDefaults.maxRetry
+
   while (attempts--) {
-    console.log(`Attempting connection to db, attempt # ${attempts}`)
+    console.log(`Connecting to DB. Attempt ${configurationWithDefaults.maxRetry - attempts} of ${configurationWithDefaults.maxRetry}`)
     try {
-      return await createConnection({
-        driver: {
-          ...mergedConfiguration.driver,
-        },
-        entities: [
-          path.join(__dirname, 'orm', '*.ts'),
-          path.join(__dirname, 'orm', 'domain', '*.ts'),
-          path.join(__dirname, 'orm', 'bitcoin', '*.ts'),
-          path.join(__dirname, 'orm', 'events', '*.ts')
-        ],
-        autoSchemaSync: mergedConfiguration.autoSchemaSync
-      })
+      const connection = await createConnection(connectionOptions)
+      console.log('Successfully connected to DB.')
+      return connection
     } catch (error) {
-      lastError = error
-      console.log('Unable to connect on attempt #', attempts, error, error.stack)
-      await delay(connectionParameters.retryDelay)
+      console.log('Unable to connect to DB. Waiting', configurationWithDefaults.retryDelay, 'ms before trying again. Error was: ', error, '\n')
+      await delay(configurationWithDefaults.retryDelay)
     }
   }
-  console.log('Never connected!', lastError, lastError.stack)
+
+  console.log(`Could not connect to DB after ${configurationWithDefaults.maxRetry} attempts. \n`)
   throw new Error('Unable to connect to db')
 }
 
+function withDefaults(connectionParameters?: Partial<ConnectionConfiguration>): ConnectionConfiguration {
+  return {
+    ...defaultConfiguration,
+    ...(connectionParameters || {}),
+    driver: {
+      ...defaultConfiguration.driver,
+      ...(connectionParameters && connectionParameters.driver || {})
+    }
+  }
+}
+
+function getConnectionOptions(configuration: ConnectionConfiguration): ConnectionOptions {
+  return {
+    driver: {
+      ...configuration.driver,
+    },
+    entities,
+    autoSchemaSync: configuration.autoSchemaSync
+  }
+}

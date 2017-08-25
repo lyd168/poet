@@ -1,9 +1,6 @@
 import * as Router from 'koa-router'
-import { Repository } from 'typeorm'
 
-import { getConnection } from '../connection'
 import { BlockchainService } from '../domainService'
-import { Route } from './route'
 import { WorkRoute } from './routes/work'
 import { BlockRoute } from './routes/blocks'
 import { ProfileRoute } from './routes/profile'
@@ -21,13 +18,6 @@ export class BlockchainRouter {
   }
 
   async addRoutes(router: Router) {
-    await this.service.start(() => getConnection({autoSchemaSync: true}))
-
-    function route<T>(repository: Repository<T>, resourcePath: string) {
-      const route = new Route<T>(repository, resourcePath)
-      route.addRoutes(router)
-    }
-
     // Placeholder for /node endpoint
     router.get('/node', async (ctx) => {
       ctx.body = JSON.stringify({ peers: 4, status: "synced" })
