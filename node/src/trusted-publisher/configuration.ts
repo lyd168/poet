@@ -1,16 +1,24 @@
 import * as fs from 'fs'
 
-export interface Configuration {
+export interface TrustedPublisherConfiguration {
   readonly notaryPrivateKey: string
   readonly bitcoinAddressPrivateKey: string
   readonly bitcoinAddress: string
+  readonly port: number
 }
 
-export function getConfiguration(configurationFilePath: string): Configuration {
+const defaultOptions: Partial<TrustedPublisherConfiguration> = {
+  port: 6000,
+}
+
+export function getConfiguration(configurationFilePath: string): TrustedPublisherConfiguration {
   if (!fs.existsSync(configurationFilePath)) {
     console.error(`File "${configurationFilePath}" not found.`)
     process.exit()
   }
 
-  return JSON.parse(fs.readFileSync(configurationFilePath, 'utf8'))
+  return {
+    ...defaultOptions,
+    ...JSON.parse(fs.readFileSync(configurationFilePath, 'utf8'))
+  }
 }

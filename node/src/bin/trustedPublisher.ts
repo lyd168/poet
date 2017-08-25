@@ -3,12 +3,13 @@ import { Fields, ClaimTypes, Claim, Block, ClaimBuilder } from 'poet-js'
 const { promisify } = require('util')
 const bitcore = require('bitcore-lib')
 const explorers = require('bitcore-explorers')
-const Body = require('koa-body')
-const Route = require('koa-route')
+import * as KoaBody from 'koa-body'
+import * as KoaRoute from 'koa-route'
 
-import { getHash } from '../helpers/torrentHash'
+import { getHash } from '../helpers/torrentHash' // TODO: use poet-js
 import { Queue } from '../queue'
 import { getConfiguration } from '../trusted-publisher/configuration'
+import { getConfigurationPath } from '../helpers/CommandLineArgumentsHelper'
 
 const insightInstance = new explorers.Insight(bitcore.Networks.testnet)
 const broadcastTx = promisify(insightInstance.broadcast.bind(insightInstance))
@@ -16,48 +17,30 @@ const getUtxo = promisify(insightInstance.getUnspentUtxos.bind(insightInstance))
 
 const queue = new Queue()
 
-const command = process.argv[2]
-const commandArgument = process.argv[3]
+const configurationPath = getConfigurationPath()
+const configuration = getConfiguration(configurationPath)
 
-if ((command !== '--configuration' && command !== '-c') || !commandArgument) {
-  console.error('Usage: [--configuration <path>] [-c <path>]')
-  process.exit()
-}
-
-const configuration = getConfiguration(commandArgument)
 const bitcoinAddressPrivateKey = new bitcore.PrivateKey(configuration.bitcoinAddressPrivateKey)
 
-export interface TrustedPublisherOptions {
-  port: number
-}
-
-async function start(options?: TrustedPublisherOptions) {
-  const defaultOptions = {
-    port: 6000,
-    broadcast: true
+async function start() {
+  try {
+    const server = await createServer()
+    await server.listen(configuration.port)
+    console.log('Trusted Publisher started successfully.')
+  } catch (error) {
+    console.log('Trusted Publisher failed to start. Error was: ', error)
   }
-
-  const mergedOptions = {
-    ...defaultOptions,
-    ...(options || {})
-  }
-
-  const server = await createServer()
-  await server.listen(mergedOptions.port)
-
-  console.log('Server started successfully.')
 }
 
 async function createServer() {
   const koa = new Koa()
 
   koa.use(handleErrors)
-
-  koa.use(Body({ textLimit: 1000000 }))
-  koa.use(Route.post('/titles', async (ctx: any) => postTitles(ctx)))
-  koa.use(Route.post('/licenses', async (ctx: any) => postLicenses(ctx)))
-  koa.use(Route.post('/claims', async (ctx: any) => postClaims(ctx)))
-  koa.use(Route.post('/v2/claims', async (ctx: any) => postClaimsV2(ctx)))
+  koa.use(KoaBody({ textLimit: 1000000 }))
+  koa.use(KoaRoute.post('/titles', async (ctx: any) => postTitles(ctx)))
+  koa.use(KoaRoute.post('/licenses', async (ctx: any) => postLicenses(ctx)))
+  koa.use(KoaRoute.post('/claims', async (ctx: any) => postClaims(ctx)))
+  koa.use(KoaRoute.post('/v2/claims', async (ctx: any) => postClaimsV2(ctx)))
 
   return koa
 }
@@ -67,8 +50,8 @@ async function handleErrors(ctx: any, next: Function) {
     await next()
   } catch (error) {
     console.log(`Error processing ${ctx.method} ${ctx.path}`, error, error.stack)
-    ctx.status = 503;
-    ctx.body = 'An error occurred when processing the transaction, please try again later.';
+    ctx.status = 503
+    ctx.body = 'An error occurred while processing the transaction, please try again later.'
   }
 }
 
@@ -254,6 +237,4 @@ async function timestampClaimBlock(block: Block): Promise<void> {
   console.log('\nBroadcasted Tx:', txPostResponse)
 }
 
-start().catch(error => {
-  console.log('Unable to start Trusted Publisher server:', error, error.stack)
-})
+start()
