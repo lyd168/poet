@@ -32,24 +32,12 @@ export class ClaimsToDb {
     this.queue.bitcoinBlock().subscribeOnNext(this.bitcoinBlock)
   }
 
-  private blockDownloaded = async (block: Block) => {
-    console.log('Storing block', block.id)
-    try {
-      await this.blockchain.blockSeen(block)
-    } catch (error) {
-      console.log(error, error.stack)
-      this.queue.dispatchWork('blockRetry', block)
-    }
+  private blockDownloaded = (block: Block) => {
+    this.storeBlock(block)
   }
 
-  private blocksToSend = async (block: Block) => {
-    console.log('Storing block', block.id)
-    try {
-      await this.blockchain.blockSeen(block)
-    } catch (error) {
-      console.log(error, error.stack)
-      this.queue.dispatchWork('blockRetry', block)
-    }
+  private blocksToSend = (block: Block) => {
+    this.storeBlock(block)
   }
 
   private bitcoinBlock = async (block: BitcoinBlockMetadata) => {
@@ -72,6 +60,16 @@ export class ClaimsToDb {
 
     this.blockchain.storeBlockProcessed(block)
     this.queue.announceBitcoinBlockProcessed(block.blockHeight)
+  }
+
+  private storeBlock = async (block: Block) => {
+    console.log('Storing block', block.id)
+    try {
+      await this.blockchain.blockSeen(block)
+    } catch (error) {
+      console.log(`There was a problem while storing block ${block.id}. Programming a blockRetry. Error was: `, error)
+      this.queue.dispatchWork('blockRetry', block)
+    }
   }
 
 }
