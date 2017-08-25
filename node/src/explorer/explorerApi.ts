@@ -5,7 +5,7 @@ import * as KoaBody from 'koa-body'
 import { getConnection } from '../blockchain/connection'
 import { BlockchainService } from '../blockchain/domainService'
 import { addRoutes } from '../blockchain/httpApi/router'
-import { logErrors } from '../helpers/koaHelper'
+import { logErrors } from '../helpers/KoaHelper'
 import { ExplorerConfiguration } from './configuration'
 
 export async function createServer(options: ExplorerConfiguration): Promise<Koa> {
