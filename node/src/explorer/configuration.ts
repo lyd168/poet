@@ -6,14 +6,18 @@ export interface ExplorerConfiguration {
   readonly apiPort: number
 }
 
-export function loadExplorerConfiguration(path: string, defaults?: Partial<ExplorerConfiguration>): ExplorerConfiguration {
+const defaultConfiguration = {
+  apiPort: 4000
+}
+
+export function loadExplorerConfiguration(path: string): ExplorerConfiguration {
   if (!fs.existsSync(path)) {
     console.error(`File "${path}" not found.`)
     process.exit()
   }
 
   return {
-    ...(defaults || {}),
+    ...defaultConfiguration,
     ...JSON.parse(fs.readFileSync(path, 'utf8'))
   }
 }
