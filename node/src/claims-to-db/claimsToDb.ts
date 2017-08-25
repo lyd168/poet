@@ -6,56 +6,72 @@ import { BitcoinBlockMetadata } from '../events'
 import { getConnection } from '../blockchain/connection'
 import { ClaimsToDBConfiguration } from './configuration'
 
-export async function startListening(configuration: ClaimsToDBConfiguration) {
-  const blockchain = new BlockchainService()
-  const queue = new Queue()
+export class ClaimsToDb {
+  private configuration: ClaimsToDBConfiguration
+  private queue: Queue
+  private blockchain: BlockchainService
 
-  await blockchain.start(() => getConnection(configuration.db))
+  constructor(configuration: ClaimsToDBConfiguration) {
+    this.configuration = configuration
+    this.blockchain = new BlockchainService()
+    this.queue = new Queue()
+  }
 
-  console.log('Retrieving last block processed...')
-  const latest = await blockchain.getLastProcessedBlock()
-  console.log(`Latest block was ${latest}. Initializing scan.`)
-  queue.announceBitcoinBlockProcessed(latest)
+  public async start() {
+    await this.blockchain.start(() => getConnection(this.configuration.db))
 
-  queue.blockDownloaded().subscribeOnNext(async (block: Block) => {
+    console.log('Retrieving last processed block...')
+    const latest = await this.blockchain.getLastProcessedBlock()
+    console.log(`Latest processed block was ${latest}.`)
+
+    console.log(`Initializing scan.`)
+    this.queue.announceBitcoinBlockProcessed(latest)
+
+    this.queue.blockDownloaded().subscribeOnNext(this.blockDownloaded)
+    this.queue.blocksToSend().subscribeOnNext(this.blocksToSend)
+    this.queue.bitcoinBlock().subscribeOnNext(this.bitcoinBlock)
+  }
+
+  private blockDownloaded = async (block: Block) => {
     console.log('Storing block', block.id)
     try {
-      await blockchain.blockSeen(block)
+      await this.blockchain.blockSeen(block)
     } catch (error) {
       console.log(error, error.stack)
-      queue.dispatchWork('blockRetry', block)
+      this.queue.dispatchWork('blockRetry', block)
     }
-  })
+  }
 
-  queue.blocksToSend().subscribeOnNext(async (block: Block) => {
+  private blocksToSend = async (block: Block) => {
     console.log('Storing block', block.id)
     try {
-      await blockchain.blockSeen(block)
+      await this.blockchain.blockSeen(block)
     } catch (error) {
       console.log(error, error.stack)
-      queue.dispatchWork('blockRetry', block)
+      this.queue.dispatchWork('blockRetry', block)
     }
-  })
+  }
 
-  queue.bitcoinBlock().subscribeOnNext(async (block: BitcoinBlockMetadata) => {
+  private bitcoinBlock = async (block: BitcoinBlockMetadata) => {
     for (let poetTx of block.poet) {
       try {
         poetTx.bitcoinHash = block.blockHash
         poetTx.bitcoinHeight = block.blockHeight
         poetTx.timestamp = block.timestamp
-        const blockInfo = (await blockchain.getBlockInfoByTorrentHash(poetTx.torrentHash))
+        const blockInfo = (await this.blockchain.getBlockInfoByTorrentHash(poetTx.torrentHash))
         if (blockInfo && blockInfo.timestamp) {
           continue
         }
         console.log('Confirming block with torrent hash', poetTx.torrentHash)
-        await blockchain.blockConfirmed(poetTx)
+        await this.blockchain.blockConfirmed(poetTx)
       } catch (error) {
         console.log(error, error.stack)
-        queue.dispatchWork('confirmRetry', poetTx)
+        this.queue.dispatchWork('confirmRetry', poetTx)
       }
     }
 
-    blockchain.storeBlockProcessed(block)
-    queue.announceBitcoinBlockProcessed(block.blockHeight)
-  })
+    this.blockchain.storeBlockProcessed(block)
+    this.queue.announceBitcoinBlockProcessed(block.blockHeight)
+  }
+
 }
