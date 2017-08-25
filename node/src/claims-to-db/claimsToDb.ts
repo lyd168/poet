@@ -4,12 +4,13 @@ import { BlockchainService } from '../blockchain/domainService'
 import { Queue } from '../queue'
 import { BitcoinBlockMetadata } from '../events'
 import { getConnection } from '../blockchain/connection'
+import { ClaimsToDBConfiguration } from './configuration'
 
-export async function startListening() {
+export async function startListening(configuration: ClaimsToDBConfiguration) {
   const blockchain = new BlockchainService()
   const queue = new Queue()
 
-  await blockchain.start(() => getConnection({autoSchemaSync: true}))
+  await blockchain.start(() => getConnection(configuration.db))
 
   console.log('Retrieving last block processed...')
   const latest = await blockchain.getLastProcessedBlock()
