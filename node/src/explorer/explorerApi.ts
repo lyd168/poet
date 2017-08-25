@@ -4,19 +4,17 @@ const Body = require('koa-body')
 
 import { getConnection } from '../blockchain/connection'
 import { BlockchainService } from '../blockchain/domainService'
-import { BlockchainRouter } from '../blockchain/httpApi/router'
+import { addRoutes } from '../blockchain/httpApi/router'
 import { logErrors } from '../helpers/koaHelper'
 import { ExplorerConfiguration } from './configuration'
 
 export async function createServer(options: ExplorerConfiguration): Promise<Koa> {
   const koa = new Koa()
+  const router = new Router()
   const service = new BlockchainService()
-  const routeStrategy = new BlockchainRouter(service)
 
   await service.start(() => getConnection(options.databaseConnectionParameters))
-
-  const router = new Router()
-  await routeStrategy.addRoutes(router)
+  await addRoutes(router, service)
 
   koa.use(Body())
   koa.use(router.allowedMethods())
