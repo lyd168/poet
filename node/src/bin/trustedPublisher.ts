@@ -1,10 +1,10 @@
+import { promisify } from 'util'
 import * as Koa from 'koa'
-import { Fields, ClaimTypes, Claim, Block, ClaimBuilder } from 'poet-js'
-const { promisify } = require('util')
-const bitcore = require('bitcore-lib')
-const explorers = require('bitcore-explorers')
 import * as KoaBody from 'koa-body'
 import * as KoaRoute from 'koa-route'
+import * as bitcore from 'bitcore-lib'
+import * as explorers from 'bitcore-explorers'
+import { Fields, ClaimTypes, Claim, Block, ClaimBuilder } from 'poet-js'
 
 import { getHash } from '../helpers/torrentHash' // TODO: use poet-js
 import { Queue } from '../queue'
@@ -12,8 +12,9 @@ import { getConfiguration } from '../trusted-publisher/configuration'
 import { getConfigurationPath } from '../helpers/CommandLineArgumentsHelper'
 
 const insightInstance = new explorers.Insight(bitcore.Networks.testnet)
-const broadcastTx = promisify(insightInstance.broadcast.bind(insightInstance))
-const getUtxo = promisify(insightInstance.getUnspentUtxos.bind(insightInstance))
+const broadcastTx = promisify(insightInstance.broadcast.bind(insightInstance) as (tx: any, cb: NodeCallback<any>) => void)
+const getUtxo = promisify(insightInstance.getUnspentUtxos.bind(insightInstance) as (address: any, cb: NodeCallback<any>) => void)
+// function.bind erases type signature, which causes promisify's typings not to match for any overload.
 
 const queue = new Queue()
 
@@ -218,12 +219,12 @@ async function createBlock(claims: ReadonlyArray<Claim>) {
 async function timestampClaimBlock(block: Block): Promise<void> {
   const id = await getHash(ClaimBuilder.serializeBlockForSave(block), block.id)
 
-  // We're retrieving UTXO using bitcore's insight client rather than our own., but both work fine.
+  // We're retrieving UTXO using bitcore's insight client rather than our own, but both work fine.
   // const utxo = await InsightClient.Address.Utxos.get(poetAddress)
   const utxoBitcore = await getUtxo(configuration.bitcoinAddress)
   console.log('\n\nutxoBitcore', JSON.stringify(utxoBitcore, null, 2))
 
-  const tx = await ClaimBuilder.createTransaction(id, utxoBitcore, configuration.bitcoinAddress, bitcoinAddressPrivateKey)
+  const tx = ClaimBuilder.createTransaction(id, utxoBitcore, configuration.bitcoinAddress, bitcoinAddressPrivateKey)
 
   console.log('\nBitcoin transaction hash is', tx.hash)
   console.log('Normalized transaction hash is', tx.nid)
