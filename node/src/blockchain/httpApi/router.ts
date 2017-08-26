@@ -16,16 +16,12 @@ export async function addRoutes(router: Router, service: BlockchainService) {
     ctx.body = JSON.stringify({ peers: 4, status: "synced" })
   })
 
-  try {
-    new WorkRoute(service).addRoutes(router)
-    new BlockRoute(service).addRoutes(router)
-    new ProfileRoute(service).addRoutes(router)
-    new ClaimRoute(service).addRoutes(router)
-    new LicenseRoute(service).addRoutes(router)
-    new EventRoute(service).addRoutes(router)
-    new NotificationsRoute(service).addRoutes(router)
-    new BitcoinMalleabilityRoute(service).addRoutes(router)
-  } catch (error) {
-    console.log('Unable to setup route', error, error.stack)
-  }
+  new WorkRoute(service).addRoutes(router)
+  new BlockRoute(service).addRoutes(router)
+  new ProfileRoute(service).addRoutes(router)
+  new ClaimRoute(service).addRoutes(router)
+  new LicenseRoute(service).addRoutes(router)
+  new EventRoute(service).addRoutes(router)
+  new NotificationsRoute(service).addRoutes(router)
+  new BitcoinMalleabilityRoute(service).addRoutes(router)
 }
